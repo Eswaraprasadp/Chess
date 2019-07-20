@@ -49,7 +49,7 @@ public class BoardView extends View {
     private int height, width;
     private boolean moved = false, boardChangesAllowed = true, showPromotionPieces = false;
     private int grids[][] = new int[rows][cols];
-    private BoardUtils board;
+    private Game game;
     private List<Move> possibleMoves = new ArrayList<>();
     private Move currentMove;
     private int touchIndex = NONE;
@@ -106,8 +106,8 @@ public class BoardView extends View {
         start();
     }
     public void start(){
-        board = new BoardUtils();
-        grids = board.getGrids();
+        game = new Game();
+        grids = game.getGrids();
         moved = false;
         boardChangesAllowed = true;
         showPromotionPieces = false;
@@ -122,7 +122,7 @@ public class BoardView extends View {
     }
     public void undo(){
         if(boardChangesAllowed) {
-            board.undoMove();
+            game.undoMove();
             possibleMoves.clear();
             touchIndex = NONE;
             moved = false;
@@ -144,27 +144,6 @@ public class BoardView extends View {
                 else {
                     canvas.drawRect(left, top, right, bottom, blackPaint);
                 }
-
-                Move move = indexOfMove(possibleMoves, BoardUtils.index(row, col));
-
-                if(BoardUtils.index(row, col) == touchIndex){
-                    float paddedTop = top + gridPadding, paddedBottom = bottom - gridPadding, paddedLeft = left + gridPadding, paddedRight = right - gridPadding;
-                    canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, touchPaint);
-                }
-                else if(!move.equals(Move.getDummyMove())){
-                    float paddedTop = top + gridPadding, paddedBottom = bottom - gridPadding, paddedLeft = left + gridPadding, paddedRight = right - gridPadding;
-
-                    if(move.isEnpassant() || (grids[row][col] != EMPTY)){
-                        canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, attackPaint);
-                    }
-                    else{
-                        canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, possiblePaint);
-                    }
-                }
-                else if(board.isCheck() && BoardUtils.index(row, col) == board.indexOfOppositeKing()){
-                    float paddedTop = top + gridPadding, paddedBottom = bottom - gridPadding, paddedLeft = left + gridPadding, paddedRight = right - gridPadding;
-                    canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, attackPaint);
-                }
                 if(grids[row][col] != EMPTY && ((BoardUtils.index(row, col) != touchIndex && BoardUtils.index(row, col) != currentMove.getCastleRookIndex()) || boardChangesAllowed)){
                     Drawable drawable = ContextCompat.getDrawable(context, getPieceDrawable(grids[row][col]));
                     try {
@@ -177,6 +156,31 @@ public class BoardView extends View {
                     }
                 }
             }
+        }
+        for (Move move : possibleMoves){
+            final int row = move.getCurrentRow(), col = move.getCurrentCol();
+            float paddedTop = getGridTop(row) + gridPadding, paddedBottom = getGridBottom(row) - gridPadding, paddedLeft = getGridLeft(col) + gridPadding, paddedRight = getGridRight(col) - gridPadding;
+
+            if(move.isEnpassant() || (grids[row][col] != EMPTY)){
+                canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, attackPaint);
+            }
+            else{
+                canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, possiblePaint);
+            }
+        }
+
+        int row = touchIndex / rows, col = touchIndex % rows;
+        float paddedTop = getGridTop(row) + gridPadding, paddedBottom = getGridBottom(row) - gridPadding, paddedLeft = getGridLeft(col) + gridPadding, paddedRight = getGridRight(col) - gridPadding;
+        canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, touchPaint);
+
+        if(game.isCheck()){
+            row = game.indexOfOppositeKing() / rows;
+            col = game.indexOfOppositeKing() % rows;
+            paddedTop = getGridTop(row) + gridPadding;
+            paddedBottom = getGridBottom(row) - gridPadding;
+            paddedLeft = getGridLeft(col) + gridPadding;
+            paddedRight = getGridRight(col) - gridPadding;
+            canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, attackPaint);
         }
         if(!boardChangesAllowed){
             Drawable drawable = ContextCompat.getDrawable(context, getPieceDrawable(currentMove.getPiece()));
@@ -215,12 +219,10 @@ public class BoardView extends View {
         if(showPromotionPieces){
             int piece = promotedInfo.getSelectedPiece(x, y);
             if(piece != NO_PIECE){
-                Log.d(tag, "Before clicking current move was " + currentMove + ", current index of move = " + currentMove.getCurrent());
                 currentMove = indexOfMove(possibleMoves, currentMove.getCurrent(), piece);
-                Log.d(tag, "Clicked on piece " + Move.pieceString(piece) + " ie. Move " + currentMove);
-                board.makeMove(currentMove);
+                game.makeMove(currentMove);
                 showPromotionPieces = false;
-                grids = board.getGrids();
+                grids = game.getGrids();
                 boardChangesAllowed = true;
                 currentMove = Move.getDummyMove();
                 possibleMoves.clear();
@@ -231,8 +233,8 @@ public class BoardView extends View {
         }
 
         else if(x >= getGridLeft(0) || x <= getGridRight(cols) || y >= getGridTop(0) || y <= getGridBottom(rows)){
-            int col = (int)((x - getGridLeft(0))/(cellW + padding));
-            int row = (int)((y - getGridTop(0))/(cellW + padding));
+            final int col = (int)((x - getGridLeft(0))/(cellW + padding));
+            final int row = (int)((y - getGridTop(0))/(cellW + padding));
 
             if (!BoardUtils.validate(row) || !BoardUtils.validate(col)){
                 return;
@@ -254,21 +256,25 @@ public class BoardView extends View {
             if(!move.equals(Move.getDummyMove())){
                 moved = true;
                 currentMove = move;
-                Log.d(tag, "About to start move: " + currentMove);
                 startAnimation();
+                invalidate();
             }
 
             if(!moved && grids[row][col] != EMPTY) {
                 touchIndex = BoardUtils.index(row, col);
-                possibleMoves = board.getPossibleMoves(row, col);
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        possibleMoves = game.getPossibleMoves(row, col);
+                        invalidate();
+                    }
+                }, 8);
 //                Log.d(tag, "Possible Moves: ");
 
 //                for (int i = 0; i < possibleMoves.size(); ++i){
 //                    Log.d(tag, possibleMoves.get(i).toString());
 //                }
             }
-
-            invalidate();
 
         }
     }
@@ -316,42 +322,48 @@ public class BoardView extends View {
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
-                Log.d(tag, "Moved: " + currentMove.toString());
-
-                if(currentMove.isPromotion()){
-                    showPromotionPieces = true;
-                    promotedInfo.changeIndex(currentMove.getCurrent(), currentMove.getPiece());
-
-                    List<Move> moves = new ArrayList<>();
-                    for (Move move : possibleMoves){
-                        if(move.isPromotion()){
-                            moves.add(move);
-                        }
-                    }
-                    Log.d(tag, "Filtered promotion moves: " + moves);
-                    possibleMoves = moves;
-                }
-                else {
-                    board.makeMove(currentMove);
-                    grids = board.getGrids();
-                    touchIndex = NONE;
-                    currentMove = Move.getDummyMove();
-                    possibleMoves.clear();
-                    boardChangesAllowed = true;
-                }
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if(board.getResult() != BoardUtils.NO_RESULT){
-                            boardChangesAllowed = false;
-                            Log.d(tag, "Game over: " + getResultString(board.getResult()));
-                            possibleMoves.clear();
+                        Log.d(tag, "Moved: " + currentMove.toString());
+
+                        if(currentMove.isPromotion()){
+                            showPromotionPieces = true;
+                            promotedInfo.changeIndex(currentMove.getCurrent(), currentMove.getPiece());
+
+                            List<Move> moves = new ArrayList<>();
+                            for (Move move : possibleMoves){
+                                if(move.isPromotion()){
+                                    moves.add(move);
+                                }
+                            }
+//                    Log.d(tag, "Filtered promotion moves: " + moves);
+                            possibleMoves = moves;
+                        }
+                        else {
+                            game.makeMove(currentMove);
+                            grids = game.getGrids();
                             touchIndex = NONE;
                             currentMove = Move.getDummyMove();
+                            possibleMoves.clear();
+                            boardChangesAllowed = true;
                         }
+                        invalidate();
+                        new Handler().postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                int result = game.getResult();
+                                if(result != BoardUtils.NO_RESULT){
+                                    boardChangesAllowed = false;
+                                    Log.d(tag, "Game over: " + getResultString(result));
+                                    possibleMoves.clear();
+                                    touchIndex = NONE;
+                                    currentMove = Move.getDummyMove();
+                                }
+                            }
+                        }, 100);
                     }
-                }, 100);
-                invalidate();
+                }, 50);
             }
         });
 
@@ -460,6 +472,10 @@ public class BoardView extends View {
             }
         }
         return indexOfMove(moves, index);
+    }
+    public void finish(){
+        game.finish();
+        game = null;
     }
 
     public static String getResultString(int result){
