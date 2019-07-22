@@ -28,9 +28,7 @@ import static com.eswar.chess.BoardUtils.BLACK_WIN;
 import static com.eswar.chess.BoardUtils.canCastle;
 import static com.eswar.chess.BoardUtils.cols;
 import static com.eswar.chess.BoardUtils.copyCastleInfo;
-import static com.eswar.chess.BoardUtils.copyGrids;
 import static com.eswar.chess.BoardUtils.copyMoves;
-import static com.eswar.chess.BoardUtils.copySavedPositions;
 import static com.eswar.chess.BoardUtils.index;
 import static com.eswar.chess.BoardUtils.rows;
 import static com.eswar.chess.BoardUtils.tag;
@@ -42,6 +40,8 @@ public class Game {
     private boolean check = false, kingCastleWhite = true, queenCastleWhite = true, kingCastleBlack = true, queenCastleBlack = true, whiteTurn = true;
     private int result = NO_RESULT, breakPoint = 0, prevBreakPoint = 0;
     private Board board = new Board();
+    private boolean whiteAI = false;
+    private AI ai = new AI(whiteAI);
 
     Game(){
         kingCastleWhite = true;
@@ -94,6 +94,14 @@ public class Game {
 
     public List<Move> getPossibleMoves(int row, int col){
         return board.getPossibleMoves(row, col, true, true);
+    }
+
+    public List<Move> getAllPossibleMoves(){
+        return board.getAllPossibleMoves();
+    }
+
+    public Move getAIMove(){
+        return ai.getBestMove(this);
     }
 
     public void makeMove(Move move){
@@ -184,6 +192,7 @@ public class Game {
         }
         check = move.isThreateningMove();
         moveList.add(move);
+        board.setPrevMove(move);
         whiteTurn = !whiteTurn;
     }
 
@@ -217,30 +226,52 @@ public class Game {
                     }
                 }
             }
-
             whiteTurn = !whiteTurn;
             moveList.remove(moveList.size() - 1);
-
+            if(moveList.size() > 0) {
+                board.setPrevMove(moveList.get(moveList.size() - 1));
+            }
             check = board.isCheck();
             result = NO_RESULT;
         }
     }
+
+
 
     public int getResult() {
 
         // 50 Move Rule
         if(moveList.size() >= 100){
             int i;
-            for (i = moveList.size() - 1; i >= 0; --i){
+            for (i = moveList.size() - 1; i >= moveList.size() - 100; --i){
                 Move move = moveList.get(i);
                 if(move.isThreateningMove() || move.isKingCastle() || move.isQueenCastle() || move.isPromotion() || move.getTakenPiece() != NO_PIECE){
                     break;
                 }
             }
-            if(i < 0){
+            if(i < moveList.size() - 100){
                 return DRAW;
             }
         }
+
+//        boolean hasWhiteKing = false, hasBlackKing = false, stop = false;
+
+//        // No king
+//        for (int row = 0; row < rows && !stop; ++row){
+//            for (int col = 0; col < cols; ++col){
+//                if(board.piece(row, col) == WHITE_KING) { hasWhiteKing = true; }
+//                else if(board.piece(row, col) == BLACK_KING) { hasBlackKing = true; }
+//                if(hasWhiteKing && hasBlackKing) {
+//                    stop = true;
+//                    break;
+//                }
+//            }
+//        }
+//
+//        if(!stop){
+//            if(!hasWhiteKing) { return BLACK_WIN; }
+//            else if(!hasBlackKing)  { return WHITE_WIN; }
+//        }
 
         // Valid move exists
         for (int row = 0; row < rows; ++row){
@@ -284,20 +315,27 @@ public class Game {
 
     public boolean isCheck() { return check; }
 
+    public boolean isWhiteTurn() { return whiteTurn; }
+
+    public boolean isWhiteAI() { return whiteAI; }
+
     public Game copyAll() {
-        return new Game(board, copyMoves(moveList), copyCastleInfo(brokenCastleMoves), whiteTurn, breakPoint, prevBreakPoint);
+        return new Game(board.copy(), copyMoves(moveList), copyCastleInfo(brokenCastleMoves), whiteTurn, breakPoint, prevBreakPoint);
     }
     public Game copyOnlyMoves(){
-        return new Game(board, copyMoves(moveList), whiteTurn);
+        return new Game(board.copy(), copyMoves(moveList), whiteTurn);
     }
     public Game copyWithCastleInfo(){
-        return new Game(board, copyMoves(moveList), whiteTurn, kingCastleWhite, queenCastleWhite, kingCastleBlack, queenCastleBlack);
+        return new Game(board.copy(), copyMoves(moveList), whiteTurn, kingCastleWhite, queenCastleWhite, kingCastleBlack, queenCastleBlack);
     }
     public Game copyMinimal(){
-        return new Game(board, whiteTurn);
+        return new Game(board.copy(), whiteTurn);
     }
 
     public Board getBoard() { return board; }
+
+    public int evaluate() { return board.evaluate(); }
+
     public int[][] getGrids() { return board.getGrids(); }
 
     public void finish(){

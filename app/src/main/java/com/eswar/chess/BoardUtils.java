@@ -15,14 +15,84 @@ public class BoardUtils {
     final static int WHITE_KING = 100, WHITE_QUEEN = 10, WHITE_ROOK = 5, WHITE_BISHOP = 4, WHITE_KNIGHT = 3, WHITE_PAWN = 1;
     final static int BLACK_KING = -100, BLACK_QUEEN = -10, BLACK_ROOK = -5, BLACK_BISHOP = -4, BLACK_KNIGHT = -3, BLACK_PAWN = -1;
     final static int EMPTY = 0;
+    final static int MAX = Integer.MAX_VALUE, MIN = Integer.MIN_VALUE;
 //    private int grids[][];
     final static String tag = "tag";
-    private List<Move> moveList = new ArrayList<>();
-    private List<List<Integer>> brokenCastleMoves = new ArrayList<>();
-    private int perpetualBreakPoint, previousBreakPoint;
-    private List<int[][]> savedPositions = new ArrayList<>();
-    private boolean check, whiteTurn, kingCastleWhite, queenCastleWhite, kingCastleBlack, queenCastleBlack;
-    private int result;
+
+    final static int KING_SCORE = 20000, QUEEN_SCORE = 900, ROOK_SCORE = 500, BISHOP_SCORE = 330, KNIGHT_SCORE = 320, PAWN_SCORE = 100;
+    final static int DOUBLED_PAWN_SCORE = 50, BLOCKED_PAWN_SCORE = 50, ISOLATED_PAWN_SCORE = 50;
+    final static int MOBILITY_SCORE = 10;
+
+    final static int[][] PAWN_TABLE = new int[][]{
+            {  0,  0,  0,  0,  0,  0,  0,  0},
+            { 50, 50, 50, 50, 50, 50, 50, 50},
+            { 10, 10, 20, 30, 30, 20, 10, 10},
+            {  5,  5, 10, 25, 25, 10,  5,  5},
+            {  0,  0,  0, 20, 20,  0,  0,  0},
+            { -5, -5,-10,  0,  0,-10, -5, -5},
+            {  5, 10, 10,-20,-20, 10, 10,  5},
+            {  0,  0,  0,  0,  0,  0,  0,  0}
+    };
+    final static int[][] KNIGHT_TABLE = new int[][]{
+            {-50,-40,-30,-30,-30,-30,-40,-50},
+            {-40,-20,  0,  0,  0,  0,-20,-40},
+            {-30,  0, 10, 15, 15, 10,  0,-30},
+            {-30,  5, 15, 20, 20, 15,  5,-30},
+            {-30,  0, 15, 20, 20, 15,  0,-30},
+            {-30,  5, 15, 20, 20, 15,  5,-30},
+            {-40,-20,  0,  0,  0,  0,-20,-40},
+            {-50,-40,-30,-30,-30,-30,-40,-50}
+    };
+    final static int[][] BISHOP_TABLE = new int[][]{
+            {-20,-10,-10,-10,-10,-10,-10,-20},
+            {-10,0,0,0,0,0,0,-10},
+            {-10,0,5,10,10,5,0,-10},
+            {-10,5,5,10,10,5,5,-10},
+            {-10,0,10,10,10,10,0,-10},
+            {-10,10,10,10,10,10,10,-10},
+            {-10,5,0,0,0,0,5,-10},
+            {-20,-10,-10,-10,-10,-10,-10,-20},
+    };
+    final static int[][] ROOK_TABLE = new int[][]{
+            {0,0,0,0,0,0,0,0},
+            {5,10,10,10,10,10,10,5},
+            {-5,0,0,0,0,0,0,-5},
+            {-5,0,0,0,0,0,0,-5},
+            {-5,0,0,0,0,0,0,-5},
+            {-5,0,0,0,0,0,0,-5},
+            {-5,0,0,0,0,0,0,-5},
+            {0,0,0,5,5,0,0,0}
+    };
+    final static int[][] QUEEN_TABLE = new int[][]{
+            {-20,-10,-10,-5,-5,-10,-10,-20},
+            {-10,0,0,0,0,0,0,-10},
+            {-10,0,5,5,5,5,0,-10},
+            {-5,0,5,5,5,5,0,-5},
+            {0,0,5,5,5,5,0,-5},
+            {-10,5,5,5,5,5,0,-10},
+            {-10,0,5,0,0,0,0,-10},
+            {-20,-10,-10,-5,-5,-10,-10,-20}
+    };
+    final static int[][] KING_TABLE_MIDDLE_GAME = new int[][]{
+            {-30,-40,-40,-50,-50,-40,-40,-30},
+            {-30,-40,-40,-50,-50,-40,-40,-30},
+            {-30,-40,-40,-50,-50,-40,-40,-30},
+            {-30,-40,-40,-50,-50,-40,-40,-30},
+            {-20,-30,-30,-40,-40,-30,-30,-20},
+            {-10,-20,-20,-20,-20,-20,-20,-10},
+            { 20, 20,  0,  0,  0,  0, 20, 20},
+            { 20, 30, 10,  0,  0, 10, 30, 20}
+    };
+    final static int[][] KING_TABLE_END_GAME = new int[][]{
+            {-50,-40,-30,-20,-20,-30,-40,-50},
+            {-30,-20,-10,  0,  0,-10,-20,-30},
+            {-30,-10, 20, 30, 30, 20, 20,-30},
+            {-30,-10, 30, 40, 40, 30,-10,-30},
+            {-30,-10, 30, 40, 40, 30,-10,-30},
+            {-30,-10, 20, 30, 30, 20,-10,-30},
+            {-30,-30,  0,  0,  0,  0,-30,-30},
+            {-50,-30,-30,-30,-30,-30,-30,-50}
+    };
 
     public static void makeMove(int[][] grids, Move move, boolean whiteTurn){
 
@@ -58,7 +128,6 @@ public class BoardUtils {
         else {
             grids[move.getPreviousRow()][move.getPreviousCol()] = EMPTY;
             grids[move.getCurrentRow()][move.getCurrentCol()] = move.getPiece();
-
         }
     }
 
@@ -189,7 +258,7 @@ public class BoardUtils {
 
         if(piece == WHITE_PAWN){
 
-            // TODO: Enpassant
+            // Enpassant
             if(!prevMove.equals(Move.getDummyMove())) {
 //                Log.d(tag, "Last Move: " + moveList.get(moveList.size() - 1) + ", " + moveList.get(moveList.size() - 1).equals(new Move(BLACK_PAWN, index(row - 2, col - 1), index(row, col - 1))) + ", " + moveList.get(moveList.size() - 1).equals(new Move(BLACK_PAWN, index(row - 2, col + 1), index(row, col + 1))));
                 if (prevMove.equals(new Move(BLACK_PAWN, index(row - 2, col - 1), index(row, col - 1))) && piece(grids, row - 1, col - 1) == EMPTY) {
@@ -200,7 +269,17 @@ public class BoardUtils {
                 }
             }
 
-            // TODO: Opening pawn move
+            // Capture
+            if(row != 1){
+                if(oppositeSigns(grids, piece, row-1, col-1)){
+                    moves.add(new Move(piece, index(row, col), index(row-1, col-1), piece(grids, row-1, col-1)));
+                }
+                if(oppositeSigns(grids, piece, row-1, col+1)){
+                    moves.add(new Move(piece, index(row, col), index(row-1, col+1), piece(grids, row-1, col+1)));
+                }
+            }
+
+            // Opening pawn move
             if(row == rows - 2){
                 if(grids[row-1][col] == EMPTY && grids[row-2][col] == EMPTY){
                     moves.add(new Move(piece, index(row, col), index(row-1, col)));
@@ -211,7 +290,7 @@ public class BoardUtils {
                 }
             }
 
-            // TODO: Pawn promotion
+            // Pawn promotion
             else if(row == 1){
                 int[] promotedPieces = new int[] {WHITE_QUEEN, WHITE_ROOK, WHITE_BISHOP, WHITE_KNIGHT};
                 if(!isBlocked(grids, piece, 0, col)) {
@@ -231,9 +310,9 @@ public class BoardUtils {
                 }
             }
 
-//            // TODO: Promoted pawn
+//            // Promoted pawn
 //            else if(row == 0){
-//                if(checkForCheck) {
+//                if(validateCheck) {
 //                    int[][] trialGrids = copyGrids(grids);
 //                    int[] promotedPieces = new int[]{WHITE_QUEEN, WHITE_ROOK, WHITE_BISHOP, WHITE_KNIGHT};
 //                    for (int promotedPiece : promotedPieces) {
@@ -244,20 +323,12 @@ public class BoardUtils {
 //            }
             else if(!isBlocked(grids, piece, row - 1, col)){
                 moves.add(new Move(piece, index(row, col), index(row-1, col)));
-
-                // TODO: Capture
-                if(oppositeSigns(grids, piece, row-1, col-1)){
-                    moves.add(new Move(piece, index(row, col), index(row-1, col-1), piece(grids, row-1, col-1)));
-                }
-                if(oppositeSigns(grids, piece, row-1, col+1)){
-                    moves.add(new Move(piece, index(row, col), index(row-1, col+1), piece(grids, row-1, col+1)));
-                }
             }
         }
 
         else if(piece == BLACK_PAWN){
 
-            // TODO: Enpassant
+            // Enpassant
             if(!prevMove.equals(Move.getDummyMove())) {
 //                Log.d(tag, "Last move: " + moveList.get(moveList.size() - 1) + ", " + moveList.get(moveList.size() - 1).equals(new Move(WHITE_PAWN, index(row + 2, col - 1), index(row, col - 1))) + ", " + moveList.get(moveList.size() - 1).equals(new Move(WHITE_PAWN, index(row + 2, col + 1), index(row, col + 1))));
                 if (prevMove.equals(new Move(WHITE_PAWN, index(row + 2, col - 1), index(row, col - 1))) && piece(grids, row + 1, col - 1) == EMPTY) {
@@ -268,7 +339,17 @@ public class BoardUtils {
                 }
             }
 
-            // TODO: Opening pawn move
+            // Capture
+            if(row != rows - 2){
+                if(oppositeSigns(grids, piece, row+1, col-1)){
+                    moves.add(new Move(piece, index(row, col), index(row+1, col-1), piece(grids, row+1, col-1)));
+                }
+                if(oppositeSigns(grids, piece, row+1, col+1)){
+                    moves.add(new Move(piece, index(row, col), index(row+1, col+1), piece(grids, row+1, col+1)));
+                }
+            }
+
+            // Opening pawn move
             if(row == 1){
                 if(grids[row+1][col] == EMPTY && grids[row+2][col] == EMPTY){
                     moves.add(new Move(piece, index(row, col), index(row+1, col)));
@@ -279,7 +360,7 @@ public class BoardUtils {
                 }
             }
 
-            // TODO: Pawn promotion
+            // Pawn promotion
             else if(row == rows - 2){
                 int[] promotedPieces = new int[] {BLACK_QUEEN, BLACK_ROOK, BLACK_BISHOP, BLACK_KNIGHT};
                 if(!isBlocked(grids, piece, rows - 1, col)) {
@@ -299,7 +380,7 @@ public class BoardUtils {
                 }
             }
 
-//            // TODO: Promoted Pawn
+//            // Promoted Pawn
 //            else if(row == rows - 1){
 //                if(checkForCheck) {
 //                    int[][] trialGrids = copyGrids(grids);
@@ -311,17 +392,9 @@ public class BoardUtils {
 //                }
 //            }
 
-            // TODO: Regular moves
+            // Regular moves
             else if(!isBlocked(grids, piece, row + 1, col) && !oppositeSigns(grids, piece, row + 1, col)){
                 moves.add(new Move(piece, index(row, col), index(row+1, col)));
-
-                // TODO: Capture
-                if(oppositeSigns(grids, piece, row+1, col-1)){
-                    moves.add(new Move(piece, index(row, col), index(row+1, col-1), piece(grids, row+1, col-1)));
-                }
-                if(oppositeSigns(grids, piece, row+1, col+1)){
-                    moves.add(new Move(piece, index(row, col), index(row+1, col+1), piece(grids, row+1, col+1)));
-                }
             }
         }
 
@@ -659,6 +732,29 @@ public class BoardUtils {
         return true;
     }
 
+    public static boolean canEnpassant(Move prevMove, int piece, int row, int col){
+        if(!validate(row, col)) {
+            return false;
+        }
+        if(piece == WHITE_PAWN && prevMove.getPiece() == BLACK_PAWN && row == 3){
+            if(validate(row, col - 1) && prevMove.getCurrent() == index(row, col - 1) && prevMove.getPrevious() == index(row - 2, col - 1)){
+                return true;
+            }
+            if(validate(row, col + 1) && prevMove.getCurrent() == index(row, col + 1) && prevMove.getPrevious() == index(row - 2, col + 1)){
+                return true;
+            }
+        }
+        if(piece == BLACK_PAWN && prevMove.getPiece() == WHITE_PAWN && row == 4){
+            if(validate(row, col - 1) && prevMove.getCurrent() == index(row, col - 1) && prevMove.getPrevious() == index(row + 2, col - 1)){
+                return true;
+            }
+            if(validate(row, col + 1) && prevMove.getCurrent() == index(row, col + 1) && prevMove.getPrevious() == index(row + 2, col + 1)){
+                return true;
+            }
+        }
+        return false;
+    }
+
 //    public static String  printGrids(int[][] grids){
 //        StringBuilder string = new StringBuilder();
 //        for (int i = 0; i < rows; ++i){
@@ -686,6 +782,23 @@ public class BoardUtils {
             default: return "";
         }
 
+    }
+    static int sign(int piece){
+        if (piece > 0)
+            return 1;
+        else if(piece < 0){
+            return -1;
+        }
+        else{
+            return 0;
+        }
+    }
+    static int perspective(boolean whiteAI){
+        return (whiteAI ? 1 : -1);
+    }
+
+    static String depthString(int depth){
+        return "depth" + depth;
     }
 
 //    int[][] getGrids(){ return this.grids; }

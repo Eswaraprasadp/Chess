@@ -20,7 +20,7 @@ import static com.eswar.chess.BoardUtils.WHITE_QUEEN;
 import static com.eswar.chess.BoardUtils.WHITE_ROOK;
 
 public class Move{
-    private int piece, previous, current, takenPiece, promotedPiece;
+    private int piece, previous, current, takenPiece, promotedPiece, score;
     private boolean enpassant, kingCastle, queenCastle, threateningMove, promotion;
     private final int rows = 8, cols = 8;
 
@@ -119,6 +119,8 @@ public class Move{
 
     public int getPromotedPiece() { return promotedPiece; }
 
+    public int getScore() { return score; }
+
     public int getCastleRookIndex(){
         if(kingCastle){ return BoardUtils.index(getCurrentRow(), cols - 3); }
         else if(queenCastle){ return BoardUtils.index(getCurrentRow(), 3); }
@@ -142,6 +144,8 @@ public class Move{
     }
 
     public void setThreateningMove(boolean threateningMove) { this.threateningMove = threateningMove; }
+
+    public void setScore(int score) { this.score = score; }
 
     @NonNull
     @Override

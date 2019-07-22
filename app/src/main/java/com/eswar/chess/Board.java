@@ -6,7 +6,10 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
 
+import static com.eswar.chess.BoardUtils.BISHOP_SCORE;
+import static com.eswar.chess.BoardUtils.BISHOP_TABLE;
 import static com.eswar.chess.BoardUtils.BLACK_BISHOP;
 import static com.eswar.chess.BoardUtils.BLACK_KING;
 import static com.eswar.chess.BoardUtils.BLACK_KNIGHT;
@@ -14,7 +17,19 @@ import static com.eswar.chess.BoardUtils.BLACK_PAWN;
 import static com.eswar.chess.BoardUtils.BLACK_QUEEN;
 import static com.eswar.chess.BoardUtils.BLACK_ROOK;
 import static com.eswar.chess.BoardUtils.EMPTY;
+import static com.eswar.chess.BoardUtils.KING_SCORE;
+import static com.eswar.chess.BoardUtils.KING_TABLE_END_GAME;
+import static com.eswar.chess.BoardUtils.KING_TABLE_MIDDLE_GAME;
+import static com.eswar.chess.BoardUtils.KNIGHT_SCORE;
+import static com.eswar.chess.BoardUtils.KNIGHT_TABLE;
+import static com.eswar.chess.BoardUtils.NONE;
 import static com.eswar.chess.BoardUtils.NO_PIECE;
+import static com.eswar.chess.BoardUtils.PAWN_SCORE;
+import static com.eswar.chess.BoardUtils.PAWN_TABLE;
+import static com.eswar.chess.BoardUtils.QUEEN_SCORE;
+import static com.eswar.chess.BoardUtils.QUEEN_TABLE;
+import static com.eswar.chess.BoardUtils.ROOK_SCORE;
+import static com.eswar.chess.BoardUtils.ROOK_TABLE;
 import static com.eswar.chess.BoardUtils.WHITE_BISHOP;
 import static com.eswar.chess.BoardUtils.WHITE_KING;
 import static com.eswar.chess.BoardUtils.WHITE_KNIGHT;
@@ -22,6 +37,7 @@ import static com.eswar.chess.BoardUtils.WHITE_PAWN;
 import static com.eswar.chess.BoardUtils.WHITE_QUEEN;
 import static com.eswar.chess.BoardUtils.WHITE_ROOK;
 import static com.eswar.chess.BoardUtils.arrayDeepEquals;
+import static com.eswar.chess.BoardUtils.canEnpassant;
 import static com.eswar.chess.BoardUtils.canEscapeCheck;
 import static com.eswar.chess.BoardUtils.cols;
 import static com.eswar.chess.BoardUtils.copyGrids;
@@ -29,6 +45,7 @@ import static com.eswar.chess.BoardUtils.index;
 import static com.eswar.chess.BoardUtils.lMoves;
 import static com.eswar.chess.BoardUtils.pieceString;
 import static com.eswar.chess.BoardUtils.rows;
+import static com.eswar.chess.BoardUtils.sign;
 import static com.eswar.chess.BoardUtils.tag;
 import static com.eswar.chess.BoardUtils.validate;
 
@@ -49,16 +66,16 @@ public class Board {
                 {WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK}
         };
     }
-    private Board(int[][] grids, boolean whiteTurn){
+    Board(int[][] grids, boolean whiteTurn){
         this.grids = grids;
         this.whiteTurn = whiteTurn;
     }
-    private Board(int[][] grids, boolean whiteTurn, Move prevMove){
+    Board(int[][] grids, boolean whiteTurn, Move prevMove){
         this.grids = grids;
         this.whiteTurn = whiteTurn;
         this.prevMove = prevMove;
     }
-    private Board(int[][] grids, boolean whiteTurn, Move prevMove, boolean kingCastleWhite, boolean queenCastleWhite, boolean kingCastleBlack, boolean queenCastleBlack){
+    Board(int[][] grids, boolean whiteTurn, Move prevMove, boolean kingCastleWhite, boolean queenCastleWhite, boolean kingCastleBlack, boolean queenCastleBlack){
         this.grids = grids;
         this.whiteTurn = whiteTurn;
         this.kingCastleWhite = kingCastleWhite;
@@ -66,6 +83,10 @@ public class Board {
         this.queenCastleWhite = queenCastleWhite;
         this.queenCastleBlack = queenCastleBlack;
         this.prevMove = prevMove;
+    }
+
+    public Board copy(){
+        return new Board(copyGrids(grids), whiteTurn, prevMove, kingCastleWhite, queenCastleWhite, kingCastleBlack, queenCastleBlack);
     }
 
     public boolean isCheck(){
@@ -84,25 +105,99 @@ public class Board {
         return false;
     }
 
+    public int evaluate(){
+        int score = 0;
+        int queens = 0, minorPieces = 0, rowWhiteKing = NONE, colWhiteKing = NONE, rowBlackKing = NONE, colBlackKing = NONE;
+        for (int row = 0; row < rows; ++row){
+            for (int col = 0; col < cols; ++col){
+                if(piece(row, col) == WHITE_KING){
+                    score += KING_SCORE + KING_TABLE_MIDDLE_GAME[row][col];
+                    rowWhiteKing = row;
+                    colWhiteKing = col;
+                }
+                else if(piece(row, col) == WHITE_QUEEN){
+                    score += QUEEN_SCORE + QUEEN_TABLE[row][col];
+                    ++queens;
+                }
+                else if(piece(row, col) == WHITE_ROOK){
+                    score += ROOK_SCORE + ROOK_TABLE[row][col];
+                }
+                else if(piece(row, col) == WHITE_BISHOP){
+                    score += BISHOP_SCORE + BISHOP_TABLE[row][col];
+                    ++minorPieces;
+                }
+                else if(piece(row, col) == WHITE_KNIGHT){
+                    score += KNIGHT_SCORE + KNIGHT_TABLE[row][col];
+                    ++minorPieces;
+                }
+                else if(piece(row, col) == WHITE_PAWN){
+                    score += PAWN_SCORE + PAWN_TABLE[row][col];
+                }
+                else if(piece(row, col) == BLACK_KING){
+                    score -= KING_SCORE + KING_TABLE_MIDDLE_GAME[rows-1-row][col];
+                    rowBlackKing = row;
+                    colBlackKing = col;
+                }
+                else if(piece(row, col) == BLACK_QUEEN){
+                    score -= QUEEN_SCORE + QUEEN_TABLE[rows-1-row][col];
+                    ++queens;
+                }
+                else if(piece(row, col) == BLACK_ROOK){
+                    score -= ROOK_SCORE + ROOK_TABLE[rows-1-row][col];
+                }
+                else if(piece(row, col) == BLACK_BISHOP){
+                    score -= BISHOP_SCORE + BISHOP_TABLE[rows-1-row][col];
+                    ++minorPieces;
+                }
+                else if(piece(row, col) == BLACK_KNIGHT){
+                    score -= KNIGHT_SCORE + KNIGHT_TABLE[rows-1-row][col];
+                    ++minorPieces;
+                }
+                else if(piece(row, col) == BLACK_PAWN){
+                    score -= PAWN_SCORE + PAWN_TABLE[rows-1-row][col];
+                }
+            }
+        }
+        if(queens == 0 || queens == 1 && minorPieces <= 2){
+            if(rowWhiteKing != NONE){
+                score += KING_TABLE_END_GAME[rowWhiteKing][colWhiteKing] - KING_TABLE_MIDDLE_GAME[rowWhiteKing][colWhiteKing];
+            }
+            if(rowBlackKing != NONE){
+                score -= KING_TABLE_END_GAME[rows-1-rowBlackKing][colBlackKing] - KING_TABLE_MIDDLE_GAME[rows-1-rowBlackKing][colBlackKing];
+            }
+        }
+        return score;
+    }
+
     public List<Move> getPossibleMoves(int row, int col, boolean validateCheck, boolean checkAttackingThreat){
         List<Move> moves = new ArrayList<>();
         int piece = grids[row][col];
         if(oppositePiece(row, col)){ return new ArrayList<>(); }
         else if(piece == EMPTY){ return new ArrayList<>(); }
+//        Log.d(tag, "Previous move: " + prevMove);
         if(piece == WHITE_PAWN){
-
-            // TODO: Enpassant
+            // Enpassant
             if(!prevMove.equals(Move.getDummyMove())) {
 //                Log.d(tag, "Last Move: " + moveList.get(moveList.size() - 1) + ", " + moveList.get(moveList.size() - 1).equals(new Move(BLACK_PAWN, index(row - 2, col - 1), index(row, col - 1))) + ", " + moveList.get(moveList.size() - 1).equals(new Move(BLACK_PAWN, index(row - 2, col + 1), index(row, col + 1))));
-                if (prevMove.equals(new Move(BLACK_PAWN, index(row - 2, col - 1), index(row, col - 1))) && piece(row - 1, col - 1) == EMPTY) {
+                if (canEnpassant(prevMove, piece, row, col) && piece(row - 2, col - 1) == EMPTY) {
                     moves.add(new Move(piece, index(row, col), index(row - 1, col - 1), EMPTY, false, true));
                 }
-                else if (prevMove.equals(new Move(BLACK_PAWN, index(row - 2, col + 1), index(row, col + 1))) && piece(row - 1, col + 1) == EMPTY) {
+                else if (canEnpassant(prevMove, piece, row, col) && piece(row - 2, col + 1) == EMPTY) {
                     moves.add(new Move(piece, index(row, col), index(row - 1, col + 1), EMPTY, false, true));
                 }
             }
 
-            // TODO: Opening pawn move
+            // Capture
+            if(row != 1){
+                if(oppositeSigns(piece, row-1, col-1)){
+                    moves.add(new Move(piece, index(row, col), index(row-1, col-1), piece(row-1, col-1)));
+                }
+                if(oppositeSigns(piece, row-1, col+1)){
+                    moves.add(new Move(piece, index(row, col), index(row-1, col+1), piece(row-1, col+1)));
+                }
+            }
+
+            // Opening pawn move
             if(row == rows - 2){
                 if((grids[row-1][col] == EMPTY) && (grids[row-2][col] == EMPTY)){
                     moves.add(new Move(piece, index(row, col), index(row-1, col)));
@@ -113,7 +208,7 @@ public class Board {
                 }
             }
 
-            // TODO: Pawn Promotion
+            // Pawn Promotion
             else if(row == 1){
                 int[] promotedPieces = new int[] {WHITE_QUEEN, WHITE_ROOK, WHITE_BISHOP, WHITE_KNIGHT};
                 if(!isBlocked(piece, 0, col)) {
@@ -133,34 +228,36 @@ public class Board {
                 }
             }
 
-            //TODO: Regular moves
+            // Regular move
             else if(!isBlocked(piece, row - 1, col)){
                 moves.add(new Move(piece, index(row, col), index(row-1, col)));
-
-                // TODO: Capture
-                if(oppositeSigns(piece, row-1, col-1)){
-                    moves.add(new Move(piece, index(row, col), index(row-1, col-1), piece(row-1, col-1)));
-                }
-                if(oppositeSigns(piece, row-1, col+1)){
-                    moves.add(new Move(piece, index(row, col), index(row-1, col+1), piece(row-1, col+1)));
-                }
             }
         }
 
         else if(piece == BLACK_PAWN){
 
-            // TODO: Enpassant
+            // Enpassant
             if(!prevMove.equals(Move.getDummyMove())) {
 //                Log.d(tag, "Last move: " + moveList.get(moveList.size() - 1) + ", " + moveList.get(moveList.size() - 1).equals(new Move(WHITE_PAWN, index(row + 2, col - 1), index(row, col - 1))) + ", " + moveList.get(moveList.size() - 1).equals(new Move(WHITE_PAWN, index(row + 2, col + 1), index(row, col + 1))));
-                if (prevMove.equals(new Move(WHITE_PAWN, index(row + 2, col - 1), index(row, col - 1))) && piece(row + 1, col - 1) == EMPTY) {
+                if (canEnpassant(prevMove, piece, row, col) && piece(row + 2, col - 1) == EMPTY) {
                     moves.add(new Move(piece, index(row, col), index(row + 1, col - 1), EMPTY, false, true));
                 }
-                else if (prevMove.equals(new Move(WHITE_PAWN, index(row + 2, col + 1), index(row, col + 1))) && piece(row + 1, col + 1) == EMPTY) {
+                else if (canEnpassant(prevMove, piece, row, col) && piece(row + 2, col + 1) == EMPTY) {
                     moves.add(new Move(piece, index(row, col), index(row + 1, col + 1), EMPTY, false, true));
                 }
             }
 
-            // TODO: Opening pawn move
+            // Capture
+            if(row != rows - 2){
+                if(oppositeSigns(piece, row+1, col-1)){
+                    moves.add(new Move(piece, index(row, col), index(row+1, col-1), piece(row+1, col-1)));
+                }
+                if(oppositeSigns(piece, row+1, col+1)){
+                    moves.add(new Move(piece, index(row, col), index(row+1, col+1), piece(row+1, col+1)));
+                }
+            }
+
+            // Opening pawn move
             if(row == 1){
                 if((grids[row+1][col] == EMPTY) && (grids[row+2][col] == EMPTY)){
                     moves.add(new Move(piece, index(row, col), index(row+1, col)));
@@ -171,7 +268,7 @@ public class Board {
                 }
             }
 
-            // TODO: Pawn Promotion
+            // Pawn Promotion
             else if(row == rows - 2){
                 int[] promotedPieces = new int[] {BLACK_QUEEN, BLACK_ROOK, BLACK_BISHOP, BLACK_KNIGHT};
                 if(!isBlocked(piece, rows - 1, col)) {
@@ -191,17 +288,9 @@ public class Board {
                 }
             }
 
-            // TODO: Regular moves
+            // Regular moves
             else if(!isBlocked(piece, row + 1, col) && !oppositeSigns(piece, row + 1, col)){
                 moves.add(new Move(piece, index(row, col), index(row+1, col)));
-
-                // TODO: Capture
-                if(oppositeSigns(piece, row+1, col-1)){
-                    moves.add(new Move(piece, index(row, col), index(row+1, col-1), piece(row+1, col-1)));
-                }
-                if(oppositeSigns(piece, row+1, col+1)){
-                    moves.add(new Move(piece, index(row, col), index(row+1, col+1), piece(row+1, col+1)));
-                }
             }
         }
 
@@ -408,6 +497,35 @@ public class Board {
         }
     }
 
+    public List<Move> getAllPossibleMoves(){
+        List<Move> allPossibleMoves = new ArrayList<>();
+        for (int col = cols/2; col <cols; ++col){
+            if(whiteTurn) {
+                for (int row = 0; row < rows; ++row) {
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                }
+            }
+            else{
+                for (int row = rows - 1; row >= 0; --row){
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                }
+            }
+        }
+        for(int col = cols/2 - 1; col >= 0; --col){
+            if(whiteTurn) {
+                for (int row = 0; row < rows; ++row) {
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                }
+            }
+            else{
+                for (int row = rows - 1; row >= 0; --row){
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                }
+            }
+        }
+        return allPossibleMoves;
+    }
+
     public void makeMove(Move move){
         if(move.equals(Move.getDummyMove()) || !validate(move.getPreviousRow(), move.getPreviousCol()) || !validate(move.getCurrentRow(), move.getCurrentCol()) || move.getPiece() == NO_PIECE){
             Log.d(tag, "Invalid move: " + move.toString());
@@ -514,6 +632,7 @@ public class Board {
     @Override
     public String toString() {
         StringBuilder string = new StringBuilder();
+        string.append("\n");
         for (int i = 0; i < rows; ++i){
             for (int j = 0; j < cols; ++j){
                 string.append(pieceString(grids[i][j]));
@@ -552,4 +671,8 @@ public class Board {
     public boolean isWhiteTurn() { return whiteTurn; }
 
     void changeWhiteTurn() { whiteTurn = !whiteTurn; }
+
+    public void setPrevMove(Move prevMove) { this.prevMove = prevMove; }
+
+    public Move getPrevMove() { return prevMove; }
 }

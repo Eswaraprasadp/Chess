@@ -55,6 +55,7 @@ public class BoardView extends View {
     private int touchIndex = NONE;
     private final String PROPERTY_X = "property_x", PROPERTY_Y = "property_y";
     private PromotedInfo promotedInfo;
+    private boolean aiPlaying = true;
 
     public BoardView(Context context){
         super(context);
@@ -122,12 +123,23 @@ public class BoardView extends View {
     }
     public void undo(){
         if(boardChangesAllowed) {
-            game.undoMove();
-            possibleMoves.clear();
-            touchIndex = NONE;
-            moved = false;
-            currentMove = Move.getDummyMove();
-            invalidate();
+            if(aiPlaying && game.isWhiteTurn() != game.isWhiteAI()){
+                game.undoMove();
+                game.undoMove();
+                possibleMoves.clear();
+                touchIndex = NONE;
+                moved = false;
+                currentMove = Move.getDummyMove();
+                invalidate();
+            }
+            else {
+                game.undoMove();
+                possibleMoves.clear();
+                touchIndex = NONE;
+                moved = false;
+                currentMove = Move.getDummyMove();
+                invalidate();
+            }
         }
     }
 
@@ -169,17 +181,15 @@ public class BoardView extends View {
             }
         }
 
-        int row = touchIndex / rows, col = touchIndex % rows;
-        float paddedTop = getGridTop(row) + gridPadding, paddedBottom = getGridBottom(row) - gridPadding, paddedLeft = getGridLeft(col) + gridPadding, paddedRight = getGridRight(col) - gridPadding;
-        canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, touchPaint);
+        if(touchIndex != NONE) {
+            int row = touchIndex / rows, col = touchIndex % rows;
+            float paddedTop = getGridTop(row) + gridPadding, paddedBottom = getGridBottom(row) - gridPadding, paddedLeft = getGridLeft(col) + gridPadding, paddedRight = getGridRight(col) - gridPadding;
+            canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, touchPaint);
+        }
 
         if(game.isCheck()){
-            row = game.indexOfOppositeKing() / rows;
-            col = game.indexOfOppositeKing() % rows;
-            paddedTop = getGridTop(row) + gridPadding;
-            paddedBottom = getGridBottom(row) - gridPadding;
-            paddedLeft = getGridLeft(col) + gridPadding;
-            paddedRight = getGridRight(col) - gridPadding;
+            int row = game.indexOfOppositeKing() / rows, col = game.indexOfOppositeKing() % rows;
+            float paddedTop = getGridTop(row) + gridPadding, paddedBottom = getGridBottom(row) - gridPadding, paddedLeft = getGridLeft(col) + gridPadding, paddedRight = getGridRight(col) - gridPadding;
             canvas.drawRect(paddedLeft, paddedTop, paddedRight, paddedBottom, attackPaint);
         }
         if(!boardChangesAllowed){
@@ -327,7 +337,24 @@ public class BoardView extends View {
                     public void run() {
                         Log.d(tag, "Moved: " + currentMove.toString());
 
-                        if(currentMove.isPromotion()){
+                        if(aiPlaying && game.isWhiteTurn() != game.isWhiteAI()){
+                            game.makeMove(currentMove);
+                            grids = game.getGrids();
+                            boardChangesAllowed = false;
+                            possibleMoves.clear();
+                            touchIndex = NONE;
+                            invalidate();
+                            new Handler().postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    currentMove = game.getAIMove();
+                                    touchIndex = currentMove.getPrevious();
+                                    boardChangesAllowed = true;
+                                    startAnimation();
+                                }
+                            }, 100);
+                        }
+                        else if(currentMove.isPromotion()){
                             showPromotionPieces = true;
                             promotedInfo.changeIndex(currentMove.getCurrent(), currentMove.getPiece());
 
@@ -337,7 +364,7 @@ public class BoardView extends View {
                                     moves.add(move);
                                 }
                             }
-//                    Log.d(tag, "Filtered promotion moves: " + moves);
+//                          Log.d(tag, "Filtered promotion moves: " + moves);
                             possibleMoves = moves;
                         }
                         else {
@@ -361,9 +388,9 @@ public class BoardView extends View {
                                     currentMove = Move.getDummyMove();
                                 }
                             }
-                        }, 100);
+                        }, 25);
                     }
-                }, 50);
+                }, 15);
             }
         });
 
@@ -577,4 +604,10 @@ public class BoardView extends View {
         }
     }
 
+    public boolean isAiPlaying() { return aiPlaying; }
+
+    public void setAiPlaying(boolean aiPlaying) {
+        this.aiPlaying = aiPlaying;
+        start();
+    }
 }
