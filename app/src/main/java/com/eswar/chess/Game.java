@@ -27,6 +27,7 @@ import static com.eswar.chess.BoardUtils.WHITE_WIN;
 import static com.eswar.chess.BoardUtils.BLACK_WIN;
 import static com.eswar.chess.BoardUtils.canCastle;
 import static com.eswar.chess.BoardUtils.cols;
+import static com.eswar.chess.BoardUtils.copyBreakpoints;
 import static com.eswar.chess.BoardUtils.copyCastleInfo;
 import static com.eswar.chess.BoardUtils.copyMoves;
 import static com.eswar.chess.BoardUtils.index;
@@ -37,8 +38,9 @@ import static com.eswar.chess.BoardUtils.validate;
 public class Game {
     private List<Move> moveList = new ArrayList<>();
     private List<List<Integer>> brokenCastleMoves = new ArrayList<>();
+    private List<Integer> brokenMovesRule = new ArrayList<>();
     private boolean check = false, kingCastleWhite = true, queenCastleWhite = true, kingCastleBlack = true, queenCastleBlack = true, whiteTurn = true;
-    private int result = NO_RESULT, breakPoint = 0, prevBreakPoint = 0;
+    private int result = NO_RESULT;
     private Board board = new Board();
     private boolean whiteAI = false;
     private AI ai = new AI(whiteAI);
@@ -50,13 +52,12 @@ public class Game {
         queenCastleBlack = true;
     }
 
-    Game(Board board, List<Move> moveList, List<List<Integer>> brokenCastleMoves, boolean whiteTurn, int breakPoint, int prevBreakPoint){
+    Game(Board board, List<Move> moveList, List<List<Integer>> brokenCastleMoves, List<Integer> brokenMovesRule, boolean whiteTurn){
 
         this.board = board;
         this.moveList = moveList;
         this.brokenCastleMoves = brokenCastleMoves;
-        this.breakPoint = breakPoint;
-        this.prevBreakPoint = prevBreakPoint;
+        this.brokenMovesRule = brokenMovesRule;
         this.whiteTurn = whiteTurn;
 
         boolean canCastle[] = canCastle(brokenCastleMoves);
@@ -105,7 +106,7 @@ public class Game {
     }
 
     public void makeMove(Move move){
-        if(move.equals(Move.getDummyMove()) || !validate(move.getPreviousRow(), move.getPreviousCol()) || !validate(move.getCurrentRow(), move.getCurrentCol()) || move.getPiece() == NO_PIECE){
+        if((move.equals(Move.getDummyMove()) || !validate(move.getPreviousRow(), move.getPreviousCol()) || !validate(move.getCurrentRow(), move.getCurrentCol()) || move.getPiece() == NO_PIECE) && result == NO_RESULT){
             Log.d(tag, "Invalid move: " + move.toString());
             return;
         }
@@ -123,9 +124,6 @@ public class Game {
                 List<Integer> list = Arrays.asList(moveList.size(), 0, 1, 1);
                 brokenCastleMoves.add(list);
             }
-
-            prevBreakPoint = breakPoint;
-            breakPoint = moveList.size();
         }
         else if(move.isQueenCastle()){
 
@@ -141,19 +139,20 @@ public class Game {
                 List<Integer> list = Arrays.asList(moveList.size(), 0, 1, 1);
                 brokenCastleMoves.add(list);
             }
-
-            prevBreakPoint = breakPoint;
-            breakPoint = moveList.size();
         }
-        else if(move.isPromotion()){
-
-            prevBreakPoint = breakPoint;
-            breakPoint = moveList.size();
+//        else if(move.isPromotion()){
+//            prevMovesBreakpoint = movesBreakpoint;
+//            movesBreakpoint = moveList.size();
+//        }
+//        else if(move.isEnpassant()){
+//            prevMovesBreakpoint = movesBreakpoint;
+//            movesBreakpoint = moveList.size();
+//        }
+        else if(move.getTakenPiece() == WHITE_KING){
+            result = BLACK_WIN;
         }
-        else if(move.isEnpassant()){
-
-            prevBreakPoint = breakPoint;
-            breakPoint = moveList.size();
+        else if(move.getTakenPiece() == BLACK_KING){
+            result = WHITE_WIN;
         }
         else {
 
@@ -190,10 +189,34 @@ public class Game {
                 queenCastleBlack = false;
             }
         }
+
+        if(move.getTakenPiece() != EMPTY || Math.abs(move.getPiece()) == WHITE_PAWN){
+            brokenMovesRule.add(moveList.size());
+        }
+        
+//        // 50 Move Rule
+//        if(moveList.size() >= 100){
+//            int i;
+//            for (i = moveList.size() - 1; i >= moveList.size() - 100; --i){
+//                Move madeMove = moveList.get(i);
+//                if(madeMove.isThreateningMove() || madeMove.isKingCastle() || madeMove.isQueenCastle() || madeMove.isPromotion() || madeMove.getTakenPiece() != NO_PIECE){
+//                    break;
+//                }
+//            }
+//            if(i < moveList.size() - 100){
+//                result = DRAW;
+//            }
+//        }
+
         check = move.isThreateningMove();
         moveList.add(move);
         board.setPrevMove(move);
         whiteTurn = !whiteTurn;
+
+        // 50 Move Rule
+        if(brokenCastleMoves.size() > 0 && moveList.size() - brokenMovesRule.get(brokenMovesRule.size() - 1) >= 100){
+            result = DRAW;
+        }
     }
 
     public void undoMove(){
@@ -201,8 +224,11 @@ public class Game {
             Move move = moveList.get(moveList.size() - 1);
             board.undoMove(move);
 
-            if(move.isKingCastle() || move.isQueenCastle() || move.isPromotion() || move.getTakenPiece() != EMPTY) {
-                breakPoint = prevBreakPoint;
+            result = NO_RESULT;
+
+            // Undo move that affected 50 move rule
+            if(brokenMovesRule.size() > 0 && brokenMovesRule.get(brokenMovesRule.size()-1) == moveList.size() - 1){
+                brokenMovesRule.remove(brokenMovesRule.size()-1);
             }
 
             // Check for right to castle
@@ -232,46 +258,36 @@ public class Game {
                 board.setPrevMove(moveList.get(moveList.size() - 1));
             }
             check = board.isCheck();
-            result = NO_RESULT;
         }
     }
 
+    // Returns all moves (invalid moves included) under check
+    public int getVirtualResult(){
 
+        // Check previously set result
+        if(result != NO_RESULT){
+            return result;
+        }
 
-    public int getResult() {
-
-        // 50 Move Rule
-        if(moveList.size() >= 100){
-            int i;
-            for (i = moveList.size() - 1; i >= moveList.size() - 100; --i){
-                Move move = moveList.get(i);
-                if(move.isThreateningMove() || move.isKingCastle() || move.isQueenCastle() || move.isPromotion() || move.getTakenPiece() != NO_PIECE){
-                    break;
+        // Valid move exists
+        for (int row = 0; row < rows; ++row){
+            for (int col = 0; col < cols; ++col){
+                if(!board.oppositePiece(row, col)){
+                    if(board.getPossibleMoves(row, col, false, false).size() > 0){
+//                        Log.d(tag, "Possible moves in getResult: " + getPossibleMoves());
+                        return NO_RESULT;
+                    }
                 }
-            }
-            if(i < moveList.size() - 100){
-                return DRAW;
             }
         }
 
-//        boolean hasWhiteKing = false, hasBlackKing = false, stop = false;
+        // No valid move exists
+        if(check) { result = (whiteTurn) ? BLACK_WIN : WHITE_WIN; }
+        else { result = DRAW; }
+        return result;
+    }
 
-//        // No king
-//        for (int row = 0; row < rows && !stop; ++row){
-//            for (int col = 0; col < cols; ++col){
-//                if(board.piece(row, col) == WHITE_KING) { hasWhiteKing = true; }
-//                else if(board.piece(row, col) == BLACK_KING) { hasBlackKing = true; }
-//                if(hasWhiteKing && hasBlackKing) {
-//                    stop = true;
-//                    break;
-//                }
-//            }
-//        }
-//
-//        if(!stop){
-//            if(!hasWhiteKing) { return BLACK_WIN; }
-//            else if(!hasBlackKing)  { return WHITE_WIN; }
-//        }
+    public int getResult() {
 
         // Valid move exists
         for (int row = 0; row < rows; ++row){
@@ -320,7 +336,7 @@ public class Game {
     public boolean isWhiteAI() { return whiteAI; }
 
     public Game copyAll() {
-        return new Game(board.copy(), copyMoves(moveList), copyCastleInfo(brokenCastleMoves), whiteTurn, breakPoint, prevBreakPoint);
+        return new Game(board.copy(), copyMoves(moveList), copyCastleInfo(brokenCastleMoves), copyBreakpoints(brokenMovesRule), whiteTurn);
     }
     public Game copyOnlyMoves(){
         return new Game(board.copy(), copyMoves(moveList), whiteTurn);

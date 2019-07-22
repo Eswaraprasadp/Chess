@@ -16,9 +16,11 @@ import static com.eswar.chess.BoardUtils.tag;
 
 public class AI {
     boolean whiteAI = false;
+    int sign = -1;
 
     public AI(boolean whiteAI){
         this.whiteAI = whiteAI;
+        sign = perspective(whiteAI);
     }
 
     private Move alphaBeta(Game game, boolean turnAI, int alpha, int beta, int depth) {
@@ -26,30 +28,30 @@ public class AI {
         int currentScore = 0;
         int bestScore = ((turnAI) ? MIN : MAX);
 
-        int result = game.getResult();
+        int result = game.getVirtualResult();
 
         if(depth <= 1){
             Log.d(depthString(depth), "Entered for: " + game.getBoard());
         }
 
-        if (game.getResult() != NO_RESULT) {
+        if (result != NO_RESULT) {
 
-            final int BONUS = 280, PENALTY = 40;
+            final int BONUS = 2100, PENALTY = 700;
 
             currentScore = game.evaluate();
-            currentScore *= perspective(whiteAI);
+            currentScore *= sign;
 
             // AI Win
-            if(result == perspective(whiteAI) * WHITE_WIN){
-                currentScore += BONUS - depth * PENALTY + KING_SCORE;
+            if(result == sign * WHITE_WIN){
+                currentScore += BONUS - depth * PENALTY;
             }
             // AI Lost
-            else if(result == perspective(whiteAI) * BLACK_WIN){
-                currentScore += -BONUS + depth * PENALTY - KING_SCORE;
+            else if(result == sign * BLACK_WIN){
+                currentScore += -BONUS + depth * PENALTY;
             }
             // Draw
             else{
-                currentScore += BONUS/30;
+                currentScore += 10;
             }
 
             if(depth <= 1) {
@@ -62,7 +64,7 @@ public class AI {
 
         else if (depth >= 3){
             currentScore = game.evaluate();
-            currentScore *= perspective(whiteAI);
+            currentScore *= sign;
             bestMove.setScore(currentScore);
             return bestMove;
 
@@ -105,9 +107,11 @@ public class AI {
                     break;
                 }
             }
+
             if(depth <= 1) {
                 Log.d(depthString(depth), "Finally bestScore = " + bestScore + ", bestMove = " + bestMove);
             }
+
             bestMove.setScore(bestScore);
 
             return bestMove;

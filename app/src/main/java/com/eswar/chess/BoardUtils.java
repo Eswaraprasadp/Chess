@@ -723,6 +723,14 @@ public class BoardUtils {
         return copied;
     }
 
+    public static List<Integer> copyBreakpoints(List<Integer> breakpoints){
+        List<Integer> copyBreakPoints = new ArrayList<>();
+        for (int breakpoint : breakpoints){
+            copyBreakPoints.add(breakpoint);
+        }
+        return copyBreakPoints;
+    }
+
     public static boolean arrayDeepEquals(int[][] a, int[][] b){
         for (int i = 0; i < a.length; ++i){
             if(!Arrays.equals(a[i], b[i])){

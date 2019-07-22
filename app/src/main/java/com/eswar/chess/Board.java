@@ -65,6 +65,19 @@ public class Board {
                 {WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN},
                 {WHITE_ROOK, WHITE_KNIGHT, WHITE_BISHOP, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK}
         };
+
+//        // Trial Position
+//
+//        grids = new int[][]{
+//                {BLACK_ROOK, EMPTY, BLACK_BISHOP, BLACK_QUEEN, BLACK_KING, BLACK_BISHOP, EMPTY, BLACK_ROOK},
+//                {BLACK_PAWN, BLACK_PAWN, BLACK_PAWN, EMPTY, EMPTY, BLACK_PAWN, BLACK_PAWN},
+//                {EMPTY, EMPTY, BLACK_KNIGHT, EMPTY, EMPTY, BLACK_KNIGHT, EMPTY, EMPTY},
+//                {EMPTY, EMPTY, EMPTY, BLACK_PAWN, BLACK_PAWN, EMPTY, BLACK_BISHOP, EMPTY},
+//                {EMPTY, EMPTY, EMPTY, EMPTY, WHITE_PAWN, EMPTY, EMPTY, EMPTY},
+//                {EMPTY, EMPTY, WHITE_KNIGHT, WHITE_PAWN, EMPTY, EMPTY, EMPTY, EMPTY},
+//                {WHITE_PAWN, WHITE_PAWN, WHITE_PAWN, EMPTY, EMPTY, WHITE_PAWN, WHITE_PAWN, WHITE_PAWN},
+//                {WHITE_ROOK, EMPTY, EMPTY, WHITE_QUEEN, WHITE_KING, WHITE_BISHOP, WHITE_KNIGHT, WHITE_ROOK}
+//        };
     }
     Board(int[][] grids, boolean whiteTurn){
         this.grids = grids;
@@ -110,6 +123,7 @@ public class Board {
         int queens = 0, minorPieces = 0, rowWhiteKing = NONE, colWhiteKing = NONE, rowBlackKing = NONE, colBlackKing = NONE;
         for (int row = 0; row < rows; ++row){
             for (int col = 0; col < cols; ++col){
+
                 if(piece(row, col) == WHITE_KING){
                     score += KING_SCORE + KING_TABLE_MIDDLE_GAME[row][col];
                     rowWhiteKing = row;
@@ -502,24 +516,24 @@ public class Board {
         for (int col = cols/2; col <cols; ++col){
             if(whiteTurn) {
                 for (int row = 0; row < rows; ++row) {
-                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, false, false));
                 }
             }
             else{
                 for (int row = rows - 1; row >= 0; --row){
-                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, false, false));
                 }
             }
         }
         for(int col = cols/2 - 1; col >= 0; --col){
             if(whiteTurn) {
                 for (int row = 0; row < rows; ++row) {
-                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, false, false));
                 }
             }
             else{
                 for (int row = rows - 1; row >= 0; --row){
-                    allPossibleMoves.addAll(getPossibleMoves(row, col, true, false));
+                    allPossibleMoves.addAll(getPossibleMoves(row, col, false, false));
                 }
             }
         }
