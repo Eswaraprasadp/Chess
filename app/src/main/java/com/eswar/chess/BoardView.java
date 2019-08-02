@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
+import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.support.annotation.Nullable;
@@ -18,9 +19,14 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
+import android.widget.Toast;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
 
 import static com.eswar.chess.BoardUtils.BLACK_BISHOP;
 import static com.eswar.chess.BoardUtils.BLACK_KING;
@@ -28,15 +34,19 @@ import static com.eswar.chess.BoardUtils.BLACK_KNIGHT;
 import static com.eswar.chess.BoardUtils.BLACK_PAWN;
 import static com.eswar.chess.BoardUtils.BLACK_QUEEN;
 import static com.eswar.chess.BoardUtils.BLACK_ROOK;
+import static com.eswar.chess.BoardUtils.BLACK_WIN;
+import static com.eswar.chess.BoardUtils.DRAW;
 import static com.eswar.chess.BoardUtils.EMPTY;
 import static com.eswar.chess.BoardUtils.NONE;
 import static com.eswar.chess.BoardUtils.NO_PIECE;
+import static com.eswar.chess.BoardUtils.NO_RESULT;
 import static com.eswar.chess.BoardUtils.WHITE_BISHOP;
 import static com.eswar.chess.BoardUtils.WHITE_KING;
 import static com.eswar.chess.BoardUtils.WHITE_KNIGHT;
 import static com.eswar.chess.BoardUtils.WHITE_PAWN;
 import static com.eswar.chess.BoardUtils.WHITE_QUEEN;
 import static com.eswar.chess.BoardUtils.WHITE_ROOK;
+import static com.eswar.chess.BoardUtils.WHITE_WIN;
 import static com.eswar.chess.BoardUtils.cols;
 import static com.eswar.chess.BoardUtils.rows;
 import static com.eswar.chess.BoardUtils.tag;
@@ -55,7 +65,11 @@ public class BoardView extends View {
     private int touchIndex = NONE;
     private final String PROPERTY_X = "property_x", PROPERTY_Y = "property_y";
     private PromotedInfo promotedInfo;
-    private boolean aiPlaying = true;
+    private boolean aiPlaying = true, whiteAI = false;
+    private MediaPlayer pop, gameOverSound;
+    private DatabaseHelper dbh;
+    private final int maxVolume = 100;
+    private float reducedVolume = (float)(Math.log(maxVolume - maxVolume/4)/Math.log(maxVolume));
 
     public BoardView(Context context){
         super(context);
@@ -91,6 +105,12 @@ public class BoardView extends View {
         touchPaint.setStrokeWidth(10.0f);
         possiblePaint.setStrokeWidth(10.0f);
         attackPaint.setStrokeWidth(10.0f);
+
+        pop = createMediaPlayer(R.raw.pop_o);
+        gameOverSound = createMediaPlayer(R.raw.game_over);
+
+        gameOverSound.setVolume(reducedVolume, reducedVolume);
+
         changeDimen();
     }
     public void changeDimen(){
@@ -386,6 +406,12 @@ public class BoardView extends View {
                                     possibleMoves.clear();
                                     touchIndex = NONE;
                                     currentMove = Move.getDummyMove();
+                                    Toast.makeText(context, getResultString(result), Toast.LENGTH_SHORT).show();
+                                    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+                                    sdf.setTimeZone(TimeZone.getDefault());
+                                    String date = sdf.format(Calendar.getInstance().getTime());
+                                    dbh.add(new GameRow(getPerspectiveResult(result), date, game.getMoveList()));
+                                    playMedia(gameOverSound);
                                 }
                             }
                         }, 25);
@@ -493,7 +519,7 @@ public class BoardView extends View {
     }
     private Move indexOfMove(List<Move> moves, int index, int promotedPiece){
         for (Move move: moves){
-            Log.d(tag, "Move current: " + move.getCurrent() + ", promoted piece: " + move.getPromotedPiece());
+//            Log.d(tag, "Move current: " + move.getCurrent() + ", promoted piece: " + move.getPromotedPiece());
             if(move.getCurrent() == index && move.getPromotedPiece() == promotedPiece){
                 return move;
             }
@@ -513,6 +539,30 @@ public class BoardView extends View {
             case BoardUtils.NO_RESULT: return "No result";
             default: return "Unknown";
         }
+    }
+
+    public String getPerspectiveResult(int result){
+        if(result == DRAW){
+            return "Draw";
+        }
+        else if(result == NO_RESULT){
+            return "No result";
+        }
+        else if(aiPlaying){
+            if(whiteAI){
+                if(result == WHITE_WIN) { return "You Won"; }
+                else if(result == BLACK_WIN) { return "You Lost"; }
+            }
+            else{
+                if(result == WHITE_WIN) { return "You Lost"; }
+                else if(result == BLACK_WIN) { return "You Won"; }
+            }
+        }
+        else{
+            if(result == WHITE_WIN) { return "White Won"; }
+            else if(result == BLACK_WIN) { return "Black Won"; }
+        }
+        return "Unknown";
     }
 
     public class PromotedInfo{
@@ -568,7 +618,7 @@ public class BoardView extends View {
         }
 
         void drawPromotedPieces(Canvas canvas){
-            Log.d(tag, "Promoted pieces set up: " + set);
+//            Log.d(tag, "Promoted pieces set up: " + set);
             if(set) {
                 for (int i = 0; i < 4; ++i) {
                     try {
@@ -604,10 +654,54 @@ public class BoardView extends View {
         }
     }
 
+    private MediaPlayer createMediaPlayer(int resource){
+        MediaPlayer mediaPlayer = MediaPlayer.create(context, resource);
+        mediaPlayer.setLooping(false);
+        return mediaPlayer;
+    }
+
+    public void destroyMediaResources(){
+        destroyMediaPlayer(pop);
+        destroyMediaPlayer(gameOverSound);
+    }
+
+    public void destroyMediaPlayer(MediaPlayer mediaPlayer){
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.reset();
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+        }
+        catch (IllegalStateException ise){
+//            Log.d(ERROR_TAG, "IllegalStateException in destroyMediaPlayer");
+//            ise.printStackTrace();
+        }
+        catch (Exception e){
+//            Log.d(ERROR_TAG, "Exception in destroyMediaPlayer");
+//            e.printStackTrace();
+        }
+    }
+    public void playMedia(MediaPlayer mediaPlayer){
+        try {
+            mediaPlayer.start();
+        }
+        catch (IllegalStateException ise){
+//            Log.d(ERROR_TAG, "IllegalStateException in playMedia");
+//            ise.printStackTrace();
+        }
+        catch (Exception e){
+//            Log.d(ERROR_TAG, "Exception in playMedia");
+//            e.printStackTrace();
+        }
+    }
+
     public boolean isAiPlaying() { return aiPlaying; }
 
     public void setAiPlaying(boolean aiPlaying) {
         this.aiPlaying = aiPlaying;
         start();
     }
+
+    public void setDbh(DatabaseHelper dbh) { this.dbh = dbh; }
 }

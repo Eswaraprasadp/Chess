@@ -153,14 +153,14 @@ public class Move{
         if(this.equals(Move.getDummyMove())){
             return "Invalid Move";
         }
-        return pieceString(piece, kingCastle, queenCastle, enpassant, isFinishingMove()) + colString(previous % rows) + (8 - previous / rows) + "-" + captured() + colString(current % rows) + (8 - current / rows) + promotedPieceString(promotedPiece) +(threateningMove ? "+" : "") + (promotion ? " takes " + pieceString(takenPiece) + (Math.abs(takenPiece) == WHITE_PAWN ? "P" : ""): "");
+        return pieceString(piece, kingCastle, queenCastle, enpassant, isFinishingMove()) + colString(previous % rows) + (8 - previous / rows) + "-" + captured() + colString(current % rows) + (8 - current / rows) + promotedPieceString(promotedPiece) +(threateningMove ? "+" : "") + (promotion ? " takes " + pieceString(takenPiece) : "");
     }
 
     public static String pieceString(int piece){
         String player = "";
-        if(piece > 0){ player += "White: "; }
-        else if(piece < 0) { player += "Black: "; }
-        else { return "Unknown"; }
+//        if(piece > 0){ player += "White: "; }
+//        else if(piece < 0) { player += "Black: "; }
+//        else { return "Unknown"; }
 
         switch (piece){
             case WHITE_KING: player += "K"; break;

@@ -1,3 +1,12 @@
 <resources>
     <string name="app_name">Chess</string>
+    <string name="result">Result</string>
+    <string name="moves">Moves:\u0020</string>
+    <string name="date">Date</string>
+    <string name="computer">Computer</string>
+    <string name="ai">AI</string>
+    <string name="history">History</string>
+    <string name="empty_history">No Games Played Yet!</string>
+    <string name="play">Play!</string>
+    <string name="view_history">View History</string>
 </resources>

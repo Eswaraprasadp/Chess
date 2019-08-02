@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/border_white"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:layout_marginLeft="@dimen/regular"
+    android:layout_marginRight="@dimen/regular"
+    android:layout_marginStart="@dimen/regular"
+    android:layout_marginEnd="@dimen/regular"
+    android:layout_marginTop="@dimen/regular"
+    android:layout_marginBottom="@dimen/regular"
+    android:paddingLeft="@dimen/large"
+    android:paddingStart="@dimen/large"
+    android:paddingRight="@dimen/large"
+    android:paddingEnd="@dimen/large"
+    android:paddingTop="@dimen/regular"
+    android:paddingBottom="@dimen/regular">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/row_result"
+        android:text="@string/result"
+        android:textSize="20sp"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:layout_marginBottom="@dimen/medium"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/row_move_size"
+        android:text="@string/moves"
+        android:textColor="@color/white"
+        android:textSize="18sp"
+        android:layout_marginTop="@dimen/medium"
+        android:layout_marginBottom="@dimen/medium"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/row_date"
+        android:text="@string/date"
+        android:textColor="@color/white"
+        android:textSize="17sp"
+        android:layout_marginTop="@dimen/medium"/>
+
+</LinearLayout>

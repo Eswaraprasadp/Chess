@@ -354,6 +354,8 @@ public class Game {
 
     public int[][] getGrids() { return board.getGrids(); }
 
+    public List<Move> getMoveList() { return moveList; }
+
     public void finish(){
         board = null;
         moveList = null;

@@ -12,7 +12,7 @@ import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseActivity {
     private BoardView boardView;
 
     private ImageView background;
@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         boardView = findViewById(R.id.board_view);
+        boardView.setDbh(dbh);
 
         background = findViewById(R.id.background_image);
         undo = findViewById(R.id.undo_button);
@@ -132,5 +133,12 @@ public class MainActivity extends AppCompatActivity {
             computerCheckBoxLandscape.setEnabled(false);
         }
         super.onConfigurationChanged(newConfig);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        boardView.destroyMediaResources();
     }
 }

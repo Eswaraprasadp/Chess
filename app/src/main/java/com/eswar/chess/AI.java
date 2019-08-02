@@ -30,9 +30,9 @@ public class AI {
 
         int result = game.getVirtualResult();
 
-        if(depth <= 1){
-            Log.d(depthString(depth), "Entered for: " + game.getBoard());
-        }
+//        if(depth <= 1){
+//            Log.d(depthString(depth), "Entered for: " + game.getBoard());
+//        }
 
         if (result != NO_RESULT) {
 
@@ -54,9 +54,9 @@ public class AI {
                 currentScore += 10;
             }
 
-            if(depth <= 1) {
-                Log.d(depthString(depth), "Terminal condition. Current Score = " + currentScore);
-            }
+//            if(depth <= 1) {
+//                Log.d(depthString(depth), "Terminal condition. Current Score = " + currentScore);
+//            }
 
             bestMove.setScore(currentScore);
             return bestMove;
@@ -97,9 +97,9 @@ public class AI {
                     }
                 }
 
-                if(depth <= 1){
-                    Log.d(depthString(depth), "Board: " + game.getBoard() + "currentScore = " + currentScore + ", bestScore = " + bestScore + ", bestMove = " + bestMove);
-                }
+//                if(depth <= 1){
+//                    Log.d(depthString(depth), "Board: " + game.getBoard() + "currentScore = " + currentScore + ", bestScore = " + bestScore + ", bestMove = " + bestMove);
+//                }
 
                 game.undoMove();
 
@@ -108,9 +108,9 @@ public class AI {
                 }
             }
 
-            if(depth <= 1) {
-                Log.d(depthString(depth), "Finally bestScore = " + bestScore + ", bestMove = " + bestMove);
-            }
+//            if(depth <= 1) {
+//                Log.d(depthString(depth), "Finally bestScore = " + bestScore + ", bestMove = " + bestMove);
+//            }
 
             bestMove.setScore(bestScore);
 

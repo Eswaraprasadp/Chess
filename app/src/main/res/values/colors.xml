@@ -9,9 +9,10 @@
     <color name="lighter_black">#FF202020</color>
     <color name="dark_brown">#DD4B3B33</color>
     <color name="darker_white">#DDDDDDDD</color>
-    <color name="dark_transparent_yellow">#DDAAAA3A</color>
-    <color name="light_transparent_yellow">#DDDFBA5A</color>
+    <!--<color name="dark_transparent_yellow">#DDAAAA3A</color>-->
+    <!--<color name="light_transparent_yellow">#DDDFBA5A</color>-->
     <color name="dark_blue">#D15A5ADA</color>
     <color name="red">#DDD81B60</color>
     <color name="purple">#DDA77FF9</color>
+    <color name="greenish_blue">#FF71A2BA</color>
 </resources>
