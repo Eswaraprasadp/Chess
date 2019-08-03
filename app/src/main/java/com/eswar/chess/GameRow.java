@@ -2,6 +2,8 @@ package com.eswar.chess;
 
 import android.support.annotation.NonNull;
 
+import com.google.gson.Gson;
+
 import java.util.List;
 
 public class GameRow {
@@ -24,6 +26,8 @@ public class GameRow {
     public List<Move> getMoveList() {
         return moveList;
     }
+
+    public String getMoveListString() { return new Gson().toJson(moveList); }
 
     @NonNull
     @Override

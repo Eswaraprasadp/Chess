@@ -1,5 +1,7 @@
 package com.eswar.chess;
 
+import android.content.Context;
+import android.content.res.Resources;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
@@ -153,7 +155,7 @@ public class Move{
         if(this.equals(Move.getDummyMove())){
             return "Invalid Move";
         }
-        return pieceString(piece, kingCastle, queenCastle, enpassant, isFinishingMove()) + colString(previous % rows) + (8 - previous / rows) + "-" + captured() + colString(current % rows) + (8 - current / rows) + promotedPieceString(promotedPiece) +(threateningMove ? "+" : "") + (promotion ? " takes " + pieceString(takenPiece) : "");
+        return pieceString(piece, kingCastle, queenCastle, enpassant) + captured() + colString(current % rows) + (8 - current / rows) + promotedPieceString(promotedPiece) +(threateningMove ? "+" : "") + (isFinishingMove() ? "#" : "");
     }
 
     public static String pieceString(int piece){
@@ -180,24 +182,21 @@ public class Move{
         return player;
     }
 
-    public static String pieceString(int piece, boolean kingCastle, boolean queenCastle, boolean enpassant, boolean finishingMove){
+    public static String pieceString(int piece, boolean kingCastle, boolean queenCastle, boolean enpassant){
         String player = "";
-        if(piece > 0){ player += "White: "; }
-        else if(piece < 0) { player += "Black: "; }
-        else { return "Unknown"; }
-
-        if(finishingMove){
-            player += "Finishing Move ";
-        }
-        if(kingCastle){
-            player += "Kingside Castle ";
-        }
-        if(queenCastle){
-            player += "Queenside Castle ";
-        }
-        if(enpassant){
-            player += "Enpassant ";
-        }
+//        if(piece > 0){ player += "White: "; }
+//        else if(piece < 0) { player += "Black: "; }
+//        else { return "Unknown"; }
+//
+//        if(kingCastle){
+//            player += "Kingside Castle ";
+//        }
+//        if(queenCastle){
+//            player += "Queenside Castle ";
+//        }
+//        if(enpassant){
+//            player += "Enpassant ";
+//        }
 
         switch (piece){
             case WHITE_KING: player += "K"; break;

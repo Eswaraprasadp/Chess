@@ -9,4 +9,13 @@
     <string name="empty_history">No Games Played Yet!</string>
     <string name="play">Play!</string>
     <string name="view_history">View History</string>
+    <string name="open_editor">Open in Viewer</string>
+    <string name="delete_all">Delete All Games</string>
+    <string name="knight_icon">&#xf441;</string>
+    <!--<string name="king_icon">&#xf440;</string>-->
+    <!--<string name="queen_icon">&#xf446;</string>-->
+    <!--<string name="rook_icon">&#xf448;</string>-->
+    <!--<string name="bishop_icon">&#xf43b;</string>-->
+    <string name="trash_icon">&#xf2ed;</string>
+    <string name="chess_board_icon">&#xf867;</string>
 </resources>
